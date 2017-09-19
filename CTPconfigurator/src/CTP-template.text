@@ -1,0 +1,88 @@
+no service pad
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname SWITCH_{{ TRAIN }}_{{ SIDE }}
+!
+username iosecure privilege 15 secret iosecure
+!
+enable secret iosecure
+!
+ip routing
+!
+{%- for POOL in DHCP %}
+ip dhcp pool {{ POOL.name }}
+  {%- if POOL.name == "Guest" %}
+ network {{ ROUTING.guestSlash8 }}.{{ IPV4 }}.0 {{ ROUTING.guestNetmask }}
+ default-router {{ ROUTING.guestSlash8 }}.{{ IPV4 }}.{{ POOL.defaultRouter }} 
+  {%- else %}
+ network {{ ROUTING.ipv4slash8 }}.{{ IPV4 }}.{{ POOL.network }} {{ ROUTING.netmask }}
+ default-router {{ ROUTING.ipv4slash8 }}.{{ IPV4 }}.{{ POOL.defaultRouter }} 
+  {%- endif %}
+!
+{%- endfor %}
+crypto key gen rsa mod 4096
+!
+spanning-tree mode rapid-pvst
+!
+lldp run
+!
+{%- for INTERFACE in INTERFACES %}
+interface {{ INTERFACE.name }}
+ description {{ INTERFACE.description }}
+  {%- if INTERFACE.type == "routed" %}
+ no switchport 
+  {%- endif %}
+  {%- if INTERFACE.name == "Lo0" %}
+    {%- if SIDE == "LEFT" %}
+ ip address {{ INTERFACE.leftIP }}.{{ IPV4 }}
+    {%- elif SIDE == "RIGHT" %}
+ ip address {{ INTERFACE.rightIP }}.{{ IPV4 }}
+    {%- endif %}
+  {%- elif INTERFACE.name == "Po1" %}
+    {%- if SIDE == "LEFT" %}
+ ip address {{ ROUTING.ipv4slash8 }}.{{ IPV4 }}.{{ INTERFACE.leftIP }}
+    {%- elif SIDE == "RIGHT" %}
+ ip address {{ ROUTING.ipv4slash8 }}.{{ IPV4 }}.{{ INTERFACE.rightIP }}
+    {%- endif %}
+ ospfv3 1000 ipv6 area 0
+ ospfv3 1000 ipv4 area 0
+  {%- elif INTERFACE.ip == "dhcp" %}
+ ip address dhcp
+ ospfv3 1000 ipv6 area 0
+ ospfv3 1000 ipv4 area 0
+  {%- elif INTERFACE.channelGroup %}
+ channel-group {{ INTERFACE.channelGroup }} mode active
+  {%- else %}
+ ip address {{ ROUTING.ipv4slash8 }}.{{ IPV4 }}.{{ INTERFACE.ip }} 
+ ospfv3 1000 ipv6 area 0
+ ospfv3 1000 ipv4 area 0
+  {%- endif %}
+!
+{%- endfor %}
+interface Vlan1
+ no ip address
+ shutdown
+!
+router ospfv3 {{ ROUTING.OSPFv3instance }}
+{%- for AF in OSPFv3 %}
+ !
+ address-family {{ AF.network }} unicast
+  {%- if AF.redistribute %}
+  redistribute {{ AF.redistribute }}
+  {%- endif %}
+  {%- if AF.passiveInterface == "default" %}
+  passive-interface default
+    {%- for PASSIVE in OSPFv3noPassiveInterface %}
+  no passive-interface {{ PASSIVE.noPassiveInterface }}
+    {%- endfor %}
+  {%- endif %}
+ exit-address-family
+{%- endfor %}
+!
+ip http server
+ip http secure-server
+!
+
+

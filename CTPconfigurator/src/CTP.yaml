@@ -1,0 +1,68 @@
+---
+INTERFACES:
+  - name: Gi1/13
+    description: Front Right
+    ip: 14
+    type: routed
+  - name: Gi1/14
+    description: Back Right
+    ip: dhcp
+    type: routed
+  - name: Gi1/15
+    description: Front Left
+    ip: dhcp
+    type: routed
+  - name: Gi1/16
+    description: Back Left
+    ip: 7
+    type: routed
+  - name: Gi1/6
+    description: Switch LACP
+    type: routed
+    vlanMap: all
+    channelGroup: 1
+  - name: Gi1/8
+    description: Switch LACP
+    type: routed
+    vlanMap: all
+    channelGroup: 1
+  - name: Po1
+    description: Switch LACP
+    leftIP: 17
+    rightIP: 22
+    type: routed
+    vlanMap: all
+  - name: Lo0
+    description: Routed Loopback
+    leftIP: 10.254.254
+    rightIP: 10.255.254
+DHCP:
+  - name: FR
+    network: 8
+    defaultRouter: 9
+  - name: BL
+    network: 0
+    defaultRouter: 1
+  - name: Guest
+    network: 192.168
+    defaultRouter: 254
+ROUTING:
+  OSPFv3instance: 1000
+  OSPFv3area: 0
+  netmask: 255.255.255.248
+  ipv4slash8: 10.0
+  guestSlash8: 192.168
+  guestNetmask: 255.255.255.0
+OSPFv3:
+  - network: ipv4
+    redistribute: connected metric 999
+    passiveInterface: default
+  - network: ipv6
+    redistribute: connected metric 330
+    passiveInterface: default
+OSPFv3noPassiveInterface:
+  - noPassiveInterface: Gi1/13
+  - noPassiveInterface: Gi1/14
+  - noPassiveInterface: Gi1/15
+  - noPassiveInterface: Gi1/16
+  - noPassiveInterface: Po1
